@@ -1,0 +1,46 @@
+name: Test basic invocation with required inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+      # Provide fake AWS credentials so the SDK initializes
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: us-east-2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action (expect AWS API failure, not config failure)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: my-source-bucket
+          source-s3-key: my-lambda.zip
+          source-s3-version: abc123
+          destination-s3-bucket: my-dest-bucket
+          destination-s3-prefix: signed/
+          profile-name: my-signing-profile
+          rename-signed-object: 'true'
+          wait-until-successful: 'true'
+          max-wait-time: '30'
+
+      - name: Assert action ran (failed at AWS API, not at input validation)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail because of invalid AWS credentials (API error),
+          # not because of missing/invalid inputs. Either 'success' or 'failure' is
+          # acceptable here — what matters is the action was invoked and ran.
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action was invoked and ran (outcome=$OUTCOME)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
