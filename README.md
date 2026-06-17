@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v1.5.0 | [`v1.5.0`](https://github.com/chainguard-actions/clowdhaus-aws-lambda-code-signing-action/tree/v1.5.0) | [`f0f2289`](https://github.com/clowdhaus/aws-lambda-code-signing-action/commit/f0f22897d1766ac655f9ec2d77e26d0187ae9030) |
+| v1.5.2 | [`v1.5.2`](https://github.com/chainguard-actions/clowdhaus-aws-lambda-code-signing-action/tree/v1.5.2) | [`c24eed3`](https://github.com/clowdhaus/aws-lambda-code-signing-action/commit/c24eed3c65ce99e6aa0249cf9a9329962d4be568) |
 
 ## Privacy
 
