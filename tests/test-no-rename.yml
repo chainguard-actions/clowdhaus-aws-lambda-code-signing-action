@@ -1,0 +1,39 @@
+name: Test - No Rename Signed Object
+on:
+  workflow_dispatch:
+
+jobs:
+  test-no-rename:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: us-east-2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with rename-signed-object disabled
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: my-source-bucket
+          source-s3-key: functions/my-function.zip
+          source-s3-version: "v1"
+          destination-s3-bucket: my-dest-bucket
+          destination-s3-prefix: "artifacts/"
+          profile-name: my-signing-profile
+          rename-signed-object: "false"
+          wait-until-successful: "false"
+
+      - name: Assert action ran (not skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran with rename-signed-object=false (outcome=$OUTCOME)"

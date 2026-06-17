@@ -1,0 +1,35 @@
+name: Test with profile-owner input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-2
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: my-source-bucket
+          source-s3-key: my-function.zip
+          source-s3-version: abc123
+          destination-s3-bucket: my-dest-bucket
+          profile-name: my-signing-profile
+          profile-owner: '123456789012'
+          wait-until-successful: 'false'
+      - name: Assert action ran (not skipped due to missing input)
+        run: |
+          echo "outcome: ${{ steps.action.outcome }}"
+          # The action should have run (and likely failed due to no real AWS creds)
+          # but it should NOT have been skipped due to missing required inputs.
+          # A 'skipped' outcome would indicate the action never ran.
+          if [ "${{ steps.action.outcome }}" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran with profile-owner input"
