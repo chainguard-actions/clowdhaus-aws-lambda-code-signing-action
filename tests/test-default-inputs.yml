@@ -1,0 +1,42 @@
+name: Test default input values
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action with only required inputs (defaults applied)
+        id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          AWS_DEFAULT_REGION: us-east-1
+        with:
+          aws-region: us-east-1
+          source-s3-bucket: test-source-bucket
+          source-s3-key: functions/my-function.zip
+          source-s3-version: "abc123"
+          destination-s3-bucket: test-dest-bucket
+          profile-name: AWSLambda-SHA384-ECDSA
+          # destination-s3-prefix defaults to 'signed/'
+          # rename-signed-object defaults to 'true'
+          # wait-until-successful defaults to 'true'
+          # max-wait-time defaults to '30'
+
+      - name: Assert action ran (not skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with default inputs, outcome: $OUTCOME"

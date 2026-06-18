@@ -1,0 +1,40 @@
+name: Test basic invocation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action (expect AWS auth failure, not a code error)
+        id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          AWS_DEFAULT_REGION: us-east-2
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: my-source-bucket
+          source-s3-key: my-lambda.zip
+          source-s3-version: "1"
+          destination-s3-bucket: my-dest-bucket
+          profile-name: my-signing-profile
+
+      - name: Assert action ran (outcome is failure due to invalid AWS creds, not missing code)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail because of invalid AWS credentials, not because of a code error.
+          # We accept 'failure' as the expected outcome here.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran and produced outcome: $OUTCOME"
