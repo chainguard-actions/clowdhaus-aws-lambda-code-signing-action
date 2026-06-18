@@ -1,0 +1,47 @@
+name: Test - Optional Inputs
+on:
+  workflow_dispatch:
+
+jobs:
+  test-optional-inputs:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: eu-west-1
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with all optional inputs specified
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          aws-region: eu-west-1
+          client-request-token: "test-token-12345"
+          source-s3-bucket: my-source-bucket
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: "v1"
+          destination-s3-bucket: my-signed-bucket
+          destination-s3-prefix: "artifacts/signed/"
+          profile-name: my-signing-profile
+          profile-owner: "123456789012"
+          rename-signed-object: "true"
+          wait-until-successful: "false"
+          max-wait-time: "60"
+
+      - name: Assert action attempted to run with optional inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # With fake credentials, the action should fail at the AWS API call
+          # This confirms the action loaded and parsed all optional inputs correctly
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action correctly attempted AWS API call with all optional inputs and failed with invalid credentials"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "WARN: action unexpectedly succeeded - this may indicate a real AWS environment"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi

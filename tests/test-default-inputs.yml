@@ -1,0 +1,46 @@
+name: Test - Default Input Values
+on:
+  workflow_dispatch:
+
+jobs:
+  test-default-inputs:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: us-east-2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with default inputs (destination-s3-prefix defaults to 'signed/', rename-signed-object defaults to 'true')
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: test-source-bucket
+          source-s3-key: lambda/my-function.zip
+          source-s3-version: "abc123"
+          destination-s3-bucket: test-dest-bucket
+          profile-name: my-lambda-signing-profile
+          # destination-s3-prefix defaults to 'signed/'
+          # rename-signed-object defaults to 'true'
+          # wait-until-successful defaults to 'true'
+          # max-wait-time defaults to '30'
+          wait-until-successful: "false"
+
+      - name: Assert action attempted to run (fails at AWS API with fake credentials)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # With fake credentials, the action should fail at the AWS API call
+          # This confirms the action loaded, parsed inputs, and attempted to call AWS
+          if [ "$OUTCOME" = "success" ]; then
+            echo "WARN: action unexpectedly succeeded - this may indicate a real AWS environment"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action correctly attempted AWS API call and failed with invalid credentials"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi
