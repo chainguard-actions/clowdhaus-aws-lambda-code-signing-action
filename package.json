@@ -1,0 +1,44 @@
+{
+  "name": "aws-lambda-code-signing-action",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GitHub action which uses AWS Code Signer to sign AWS Lambda artifacts from your pipeline",
+  "keywords": [
+    "github",
+    "actions",
+    "lambda",
+    "code-signing",
+    "git-ops"
+  ],
+  "homepage": "https://github.com/clowdhaus/aws-lambda-code-signing-action#readme",
+  "bugs": {
+    "url": "https://github.com/clowdhaus/aws-lambda-code-signing-action/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clowdhaus/aws-lambda-code-signing-action.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Clowd Haus, LLC",
+  "main": "src/index.ts",
+  "scripts": {
+    "all": "npm run lint && npm run test && npm run compile",
+    "compile": "esbuild src/index.ts --bundle --platform=node --target=node24 --minify --outfile=dist/index.js",
+    "test": "vitest run",
+    "lint": "eslint . --quiet --fix"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@aws-sdk/client-s3": "^3.1058.0",
+    "@aws-sdk/client-signer": "^3.1058.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.9.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.4.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1",
+    "vitest": "^4.1.8"
+  }
+}

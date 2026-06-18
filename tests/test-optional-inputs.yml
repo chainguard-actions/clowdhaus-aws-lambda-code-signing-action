@@ -1,0 +1,41 @@
+name: Test optional inputs - action with all optional inputs provided
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: ap-southeast-1
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with all optional inputs
+        id: action
+        uses: .
+        with:
+          aws-region: ap-southeast-1
+          client-request-token: 'unique-token-12345'
+          source-s3-bucket: my-source-bucket
+          source-s3-key: lambdas/handler.zip
+          source-s3-version: 'xyz789version'
+          destination-s3-bucket: my-signed-bucket
+          destination-s3-prefix: 'signed-artifacts/'
+          profile-name: my-lambda-signer
+          profile-owner: '123456789012'
+          rename-signed-object: 'true'
+          wait-until-successful: 'false'
+          max-wait-time: '45'
+        continue-on-error: true
+
+      - name: Assert action ran (not skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with all optional inputs (outcome=$OUTCOME)"

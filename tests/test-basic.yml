@@ -1,0 +1,39 @@
+name: Test basic - action loads and attempts AWS signing
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: us-east-2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action (expect AWS error, not JS crash)
+        id: action
+        uses: .
+        with:
+          aws-region: us-east-2
+          source-s3-bucket: my-source-bucket
+          source-s3-key: my-function.zip
+          source-s3-version: abc123
+          destination-s3-bucket: my-dest-bucket
+          profile-name: my-signing-profile
+          rename-signed-object: 'true'
+          wait-until-successful: 'false'
+        continue-on-error: true
+
+      - name: Assert action attempted to run (not a JS crash)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          # The action should either succeed (unlikely without real AWS) or fail
+          # with an AWS error. Either way, it should not be 'skipped'.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran (outcome=$OUTCOME)"

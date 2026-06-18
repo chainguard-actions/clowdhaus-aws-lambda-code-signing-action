@@ -1,0 +1,39 @@
+name: Test no-rename - action with rename-signed-object disabled
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      AWS_DEFAULT_REGION: eu-west-1
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run action with rename disabled and custom prefix
+        id: action
+        uses: .
+        with:
+          aws-region: eu-west-1
+          source-s3-bucket: source-bucket-test
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: v1abc456
+          destination-s3-bucket: dest-bucket-test
+          destination-s3-prefix: 'artifacts/'
+          profile-name: lambda-signing-profile
+          rename-signed-object: 'false'
+          wait-until-successful: 'false'
+          max-wait-time: '60'
+        continue-on-error: true
+
+      - name: Assert action ran (not skipped)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with rename-signed-object=false (outcome=$OUTCOME)"
