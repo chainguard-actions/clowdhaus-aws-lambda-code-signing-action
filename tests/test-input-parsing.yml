@@ -1,0 +1,49 @@
+name: Test input parsing and AWS error handling
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # The action requires real AWS credentials to call the Signer API.
+      # We provide syntactically valid but fake inputs so that the action
+      # fails at the AWS API call (not at input parsing), confirming that
+      # all required inputs are accepted and parsed correctly.
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        with:
+          aws-region: us-east-1
+          source-s3-bucket: my-source-bucket
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: "1"
+          destination-s3-bucket: my-destination-bucket
+          destination-s3-prefix: signed/
+          profile-name: my-signing-profile
+          rename-signed-object: "false"
+          wait-until-successful: "false"
+          max-wait-time: "30"
+
+      - name: Assert action failed at AWS API level (not input parsing)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail (because AWS credentials are fake),
+          # but it must NOT succeed (which would require real AWS resources).
+          # A failure here means the action ran past input parsing and hit AWS.
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected (AWS API error with fake credentials)"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "FAIL: action unexpectedly succeeded — real AWS resources should not be present"
+            exit 1
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

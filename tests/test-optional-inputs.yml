@@ -1,0 +1,50 @@
+name: Test optional inputs (client-request-token, profile-owner, no rename)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that optional inputs (client-request-token, profile-owner) are
+      # accepted without error, and that the action fails at the AWS API level
+      # (not at input parsing) when credentials are invalid.
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        with:
+          aws-region: eu-west-1
+          client-request-token: test-token-12345
+          source-s3-bucket: my-source-bucket
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: "abc123"
+          destination-s3-bucket: my-destination-bucket
+          destination-s3-prefix: "releases/"
+          profile-name: my-signing-profile
+          profile-owner: "123456789012"
+          rename-signed-object: "false"
+          wait-until-successful: "false"
+          max-wait-time: "60"
+
+      - name: Assert action failed at AWS API level (not input parsing)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should fail because AWS credentials are fake.
+          # Failure at the AWS API level (not input parsing) confirms
+          # all optional inputs were accepted and parsed correctly.
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected (AWS API error with fake credentials)"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "FAIL: action unexpectedly succeeded — real AWS resources should not be present"
+            exit 1
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

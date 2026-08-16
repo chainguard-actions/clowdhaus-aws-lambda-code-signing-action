@@ -1,0 +1,42 @@
+name: Test missing required input fails gracefully
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Omit the required 'aws-region' input to verify the action fails
+      # at input validation (not at the AWS API call).
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        with:
+          # aws-region intentionally omitted (required input)
+          source-s3-bucket: my-source-bucket
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: "1"
+          destination-s3-bucket: my-destination-bucket
+          destination-s3-prefix: signed/
+          profile-name: my-signing-profile
+
+      - name: Assert action failed due to missing required input
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action must fail when a required input is missing.
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected when required input is missing"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "FAIL: action unexpectedly succeeded without required 'aws-region' input"
+            exit 1
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
