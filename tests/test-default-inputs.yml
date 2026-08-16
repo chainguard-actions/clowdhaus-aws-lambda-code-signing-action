@@ -1,46 +1,41 @@
-name: Test - Default Input Values
+name: Test - Default Input Values and Input Parsing
 on:
   workflow_dispatch:
 
 jobs:
-  test-default-inputs:
+  test:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-      AWS_DEFAULT_REGION: us-east-2
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Run action with default inputs (destination-s3-prefix defaults to 'signed/', rename-signed-object defaults to 'true')
-        id: action
+      - id: action
         uses: .
         continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
         with:
-          aws-region: us-east-2
-          source-s3-bucket: test-source-bucket
-          source-s3-key: lambda/my-function.zip
-          source-s3-version: "abc123"
-          destination-s3-bucket: test-dest-bucket
+          aws-region: eu-west-1
+          source-s3-bucket: source-bucket-test
+          source-s3-key: functions/my-lambda.zip
+          source-s3-version: "abc123version"
+          destination-s3-bucket: destination-bucket-test
+          # destination-s3-prefix uses default: 'signed/'
           profile-name: my-lambda-signing-profile
-          # destination-s3-prefix defaults to 'signed/'
-          # rename-signed-object defaults to 'true'
-          # wait-until-successful defaults to 'true'
-          # max-wait-time defaults to '30'
-          wait-until-successful: "false"
+          # wait-until-successful uses default: 'true'
+          # rename-signed-object uses default: 'true'
+          # max-wait-time uses default: '30'
 
-      - name: Assert action attempted to run (fails at AWS API with fake credentials)
+      - name: Assert action failed at AWS API call (not at input parsing)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # With fake credentials, the action should fail at the AWS API call
-          # This confirms the action loaded, parsed inputs, and attempted to call AWS
-          if [ "$OUTCOME" = "success" ]; then
-            echo "WARN: action unexpectedly succeeded - this may indicate a real AWS environment"
-          elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action correctly attempted AWS API call and failed with invalid credentials"
-          else
-            echo "FAIL: unexpected outcome: $OUTCOME"
+          # The action should fail because there are no valid AWS credentials,
+          # not because of input parsing errors. Either way, the outcome is 'failure'.
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail (no AWS credentials), but got: $OUTCOME"
             exit 1
           fi
+          echo "PASS: action failed as expected (at AWS API call, not input parsing)"

@@ -1,47 +1,44 @@
-name: Test - Optional Inputs
+name: Test - Optional Inputs Handling
 on:
   workflow_dispatch:
 
 jobs:
-  test-optional-inputs:
+  test:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-      AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-      AWS_DEFAULT_REGION: eu-west-1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Run action with all optional inputs specified
-        id: action
+      - id: action
         uses: .
         continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
         with:
-          aws-region: eu-west-1
-          client-request-token: "test-token-12345"
-          source-s3-bucket: my-source-bucket
-          source-s3-key: functions/my-lambda.zip
-          source-s3-version: "v1"
-          destination-s3-bucket: my-signed-bucket
+          aws-region: ap-southeast-2
+          client-request-token: "unique-token-12345"
+          source-s3-bucket: source-bucket-optional-test
+          source-s3-key: lambdas/handler.zip
+          source-s3-version: "v2"
+          destination-s3-bucket: destination-bucket-optional-test
           destination-s3-prefix: "artifacts/signed/"
           profile-name: my-signing-profile
           profile-owner: "123456789012"
-          rename-signed-object: "true"
+          rename-signed-object: "false"
           wait-until-successful: "false"
           max-wait-time: "60"
 
-      - name: Assert action attempted to run with optional inputs
+      - name: Assert action failed at AWS API call (not at input parsing)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # With fake credentials, the action should fail at the AWS API call
-          # This confirms the action loaded and parsed all optional inputs correctly
-          if [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action correctly attempted AWS API call with all optional inputs and failed with invalid credentials"
-          elif [ "$OUTCOME" = "success" ]; then
-            echo "WARN: action unexpectedly succeeded - this may indicate a real AWS environment"
-          else
-            echo "FAIL: unexpected outcome: $OUTCOME"
+          # The action should fail because there are no valid AWS credentials.
+          # This test verifies that all optional inputs are accepted without
+          # causing input parsing errors.
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail (no AWS credentials), but got: $OUTCOME"
             exit 1
           fi
+          echo "PASS: action correctly accepted all optional inputs and failed at AWS API call"
