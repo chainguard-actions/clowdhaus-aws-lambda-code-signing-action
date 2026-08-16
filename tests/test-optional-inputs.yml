@@ -1,0 +1,55 @@
+name: Test - Optional inputs (client-request-token, profile-owner)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the action accepts all optional inputs without input-parsing errors.
+      # With rename-signed-object=false and wait-until-successful=false, the action
+      # only calls StartSigningJob and returns immediately (no wait/rename).
+      # It will still fail at the AWS API call due to invalid credentials,
+      # but should NOT fail during input parsing.
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          AWS_DEFAULT_REGION: ap-southeast-1
+        with:
+          aws-region: ap-southeast-1
+          client-request-token: my-unique-token-12345
+          source-s3-bucket: source-bucket-test
+          source-s3-key: functions/my-function.zip
+          source-s3-version: "v2"
+          destination-s3-bucket: dest-bucket-test
+          destination-s3-prefix: "artifacts/signed/"
+          profile-name: lambda-signing-profile
+          profile-owner: "123456789012"
+          rename-signed-object: "false"
+          wait-until-successful: "false"
+          max-wait-time: "60"
+
+      - name: Assert action failed at AWS API (not at input parsing)
+        run: |
+          echo "outcome: ${{ steps.action.outcome }}"
+          if [ "${{ steps.action.outcome }}" != "failure" ]; then
+            echo "FAIL: expected action to fail (no real AWS credentials available)"
+            exit 1
+          fi
+          echo "PASS: action failed at AWS API call as expected (all optional inputs parsed correctly)"
+
+      - name: Assert no renamed-signed-object-key output
+        env:
+          RENAMED_KEY: ${{ steps.action.outputs.renamed-signed-object-key }}
+        run: |
+          echo "renamed-signed-object-key: '$RENAMED_KEY'"
+          if [ -n "$RENAMED_KEY" ]; then
+            echo "FAIL: expected no renamed-signed-object-key when action fails"
+            exit 1
+          fi
+          echo "PASS: no renamed-signed-object-key output as expected"

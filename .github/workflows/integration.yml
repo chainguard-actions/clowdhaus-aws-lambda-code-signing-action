@@ -1,0 +1,63 @@
+name: integration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/integration.yml'
+      - 'dist/**'
+      - 'src/**'
+      - 'action.yml'
+      - 'yarn.lock'
+
+jobs:
+  e2e:
+    name: e2e test
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@ffc08eae7350b1061d7de219e2135c75561fb680 # master
+        with:
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-duration-seconds: 900
+          role-session-name: AwsLambdaCodeSigningAction
+
+      - name: Get archive version
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          LATEST_VERSION=$(aws s3api list-object-versions --bucket "$AWS_S3_BUCKET" --prefix unsigned/dist.zip --query 'Versions[?IsLatest].[VersionId]' --output text)
+          echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+
+      - name: Test action
+        uses: ./
+        id: signed
+        with:
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          source-s3-bucket: ${{ secrets.AWS_S3_BUCKET }}
+          source-s3-key: unsigned/dist.zip
+          source-s3-version: ${{ env.LATEST_VERSION }}
+          destination-s3-bucket: ${{ secrets.AWS_S3_BUCKET }}
+          destination-s3-prefix: signed/
+          profile-name: ${{ secrets.AWS_SIGNING_PROFILE_NAME }}
+          max-wait-time: 60
+          rename-signed-object: true
+
+      - name: Test outputs
+        env:
+          JOB_ID: ${{ steps.signed.outputs.job-id }}
+          SIGNED_OBJECT_KEY: ${{ steps.signed.outputs.signed-object-key }}
+          RENAMED_SIGNED_OBJECT_KEY: ${{ steps.signed.outputs.renamed-signed-object-key }}
+        run: |
+          echo "$JOB_ID"
+          echo "$SIGNED_OBJECT_KEY"
+          echo "$RENAMED_SIGNED_OBJECT_KEY"

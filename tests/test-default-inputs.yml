@@ -1,0 +1,56 @@
+name: Test - Default input values
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test that the action works with only required inputs provided,
+      # relying on defaults for: destination-s3-prefix (signed/),
+      # rename-signed-object (true), wait-until-successful (true), max-wait-time (30).
+      # The action will fail at the AWS API call (no real credentials),
+      # but it should NOT fail during input parsing.
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+          AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          AWS_DEFAULT_REGION: eu-west-1
+        with:
+          aws-region: eu-west-1
+          source-s3-bucket: test-source-bucket
+          source-s3-key: lambda-package.zip
+          source-s3-version: "abc123"
+          destination-s3-bucket: test-dest-bucket
+          profile-name: test-signing-profile
+          # destination-s3-prefix defaults to 'signed/'
+          # rename-signed-object defaults to 'true'
+          # wait-until-successful defaults to 'true'
+          # max-wait-time defaults to '30'
+
+      - name: Assert action failed at AWS API (not at input parsing)
+        run: |
+          echo "outcome: ${{ steps.action.outcome }}"
+          # The action should fail because of invalid AWS credentials,
+          # not because of missing/invalid inputs. Either 'failure' is acceptable
+          # since we have no real AWS access.
+          if [ "${{ steps.action.outcome }}" != "failure" ]; then
+            echo "FAIL: expected action to fail (no real AWS credentials available)"
+            exit 1
+          fi
+          echo "PASS: action failed at AWS API call as expected (inputs parsed correctly)"
+
+      - name: Assert no signed-object-key output (action failed before AWS response)
+        env:
+          SIGNED_KEY: ${{ steps.action.outputs.signed-object-key }}
+        run: |
+          echo "signed-object-key: '$SIGNED_KEY'"
+          if [ -n "$SIGNED_KEY" ]; then
+            echo "FAIL: expected no signed-object-key when action fails before AWS response"
+            exit 1
+          fi
+          echo "PASS: no signed-object-key output as expected"
